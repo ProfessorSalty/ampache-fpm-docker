@@ -1,0 +1,54 @@
+version: "3.5"
+
+volumes:
+  ampache:
+  ampache-db:
+
+services:
+  ampache:
+    build: .
+    container_name: ampache-fpm
+    restart: unless-stopped
+    environment:
+      - AMPACHE_DEBUG=true
+      - MYSQL_HOST=ampache-db
+      - MYSQL_DATABASE=ampache
+      - MYSQL_USER=ampache
+      - MYSQL_PASSWORD=test
+      - AMPACHE_SECRET=testestestestestestestest
+    volumes:
+      - ../music:/music
+      - ampache:/var/www/html/ampache
+
+  ampache-server:
+    image: nginx:alpine
+    restart: unless-stopped
+    container_name: ampache-server
+    environment:
+      - SERVER_NAME=test.com
+    volumes:
+      - ampache:/var/www/html/ampache
+      - ./default.template:/etc/nginx/conf.d/ampache.template
+    ports:
+      - 59998:80
+    command: >
+      sh -c "envsubst \"`env | awk -F = '{printf \" $$%s\", $$1}'`\"
+      < /etc/nginx/conf.d/ampache.template
+      > /etc/nginx/conf.d/ampache.conf
+      && cat /etc/nginx/conf.d/ampache.conf
+      && exec nginx -g 'daemon off;'"
+
+  ampache-db:
+    image: mysql
+    # command: --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+    container_name: ampache-db
+    ports:
+      - "3306:3306"
+    volumes:
+      - ampache-db:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=test
+      - MYSQL_DATABASE=ampache
+      - MYSQL_USER=ampache
+      - MYSQL_PASSWORD=test
